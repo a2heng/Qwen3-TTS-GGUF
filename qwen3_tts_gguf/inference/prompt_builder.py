@@ -49,14 +49,14 @@ class PromptBuilder:
         """[精品音色入口]"""
         return self._build_core(text, lang_id=lang_id, speaker=speaker, instruct=instruct)
 
-    def build_clone_prompt(self, text: str, voice, lang_id: int = None) -> PromptData:
+    def build_clone_prompt(self, text: str, voice, lang_id: int = None, zero_shot=False) -> PromptData:
         """[声音克隆入口]"""
         return self._build_core(
             text,
             lang_id=lang_id,
             speaker=voice.spk_emb,
-            ref_text=voice.text,
-            codes=voice.codes,
+            ref_text=None if zero_shot else voice.text,
+            codes=None if zero_shot else voice.codes,
         )
 
     # ===================================================================
@@ -70,7 +70,7 @@ class PromptBuilder:
                     ref_text: Optional[str] = None,
                     ref_ids: Optional[List[int]] = None,
                     codes: Optional[np.ndarray] = None,
-                    icl: bool = False) -> PromptData:
+                    icl: bool = True) -> PromptData:
         r"""
         [统一 Prompt 构造器]
 

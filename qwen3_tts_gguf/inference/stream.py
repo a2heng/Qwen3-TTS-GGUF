@@ -61,6 +61,7 @@ class TTSStream:
     def clone(self, 
               text: str, 
               language: str = "chinese",
+              zero_shot: bool = False,
               config: Optional[TTSConfig] = None) -> Optional[TTSResult]:
         """
         [克隆模式] 使用当前流中已设定的音色锚点（Voice Anchor）进行语音合成。
@@ -71,8 +72,8 @@ class TTSStream:
                 - 'chinese' , 'english', 'japanese', 'korean'
                 - 'german', 'spanish', 'french', 'russian', 'italian', 'portuguese'
                 - 'beijing_dialect' , 'sichuan_dialect' 
+            zero_shot: 是否启用零样本克隆模式。
             config: 推理配置对象 (TTSConfig)，可控制 Temperature, Top-P 等采样参数。
-            streaming: 是否启用流式推理。若为 True，则边推理边向播放器推送数据。
 
         Returns:
             TTSResult 对象，包含完整音频、特征码及性能统计。
@@ -86,7 +87,7 @@ class TTSStream:
         
         try:
             lang_id = map_language(language)
-            pdata = self.prompt_builder.build_clone_prompt(text, self.voice, lang_id)
+            pdata = self.prompt_builder.build_clone_prompt(text, self.voice, lang_id, zero_shot)
             
             timing = Timing()
             timing.prompt_time = pdata.compile_time

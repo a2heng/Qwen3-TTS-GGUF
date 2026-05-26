@@ -57,6 +57,7 @@ def main():
     result = stream.clone(
         text=target_text, 
         language='Chinese', 
+        zero_shot=False,
         config=config, 
     )
     result.print_stats()
