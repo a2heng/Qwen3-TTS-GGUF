@@ -168,8 +168,8 @@ class TTSResult:
 
     @property
     def is_valid_anchor(self) -> bool:
-        """是否具有作为 Voice 锚点的必要特征"""
-        return len(self.codes) > 0 and self.spk_emb is not None
+        """是否具有作为 Voice 锚点的必要特征（codes 是必须的，spk_emb 可选）"""
+        return len(self.codes) > 0
 
     @property
     def duration(self) -> float:
@@ -230,8 +230,8 @@ class TTSResult:
             logger.warning("⚠️ 当前结果不完整，无法保存为锚点。")
             return
 
-        # spk_emb 采用 fp32 + Base64 存储以节省空间
-        spk_b64 = base64.b64encode(self.spk_emb.astype(np.float32).tobytes()).decode('ascii')
+        # spk_emb 采用 fp32 + Base64 存储以节省空间，允许为 None
+        spk_b64 = base64.b64encode(self.spk_emb.astype(np.float32).tobytes()).decode('ascii') if self.spk_emb is not None else None
 
         data = {
             "info": self.info,
@@ -294,7 +294,9 @@ class TTSResult:
             return False
 
         spk_data = data["spk_emb"]
-        if isinstance(spk_data, list):
+        if spk_data is None:
+            pass  # 音色设计模式等场景 spk_emb 可为空
+        elif isinstance(spk_data, list):
             if len(spk_data) not in [1024, 2048]:
                 logger.warning(f"⚠️ 'spk_emb' 列表维度必须为 2048，实际为 {len(spk_data)} at {path}")
                 return False
@@ -309,7 +311,7 @@ class TTSResult:
                 logger.warning(f"⚠️ 'spk_emb' 解码后维度错误: {len(spk_arr)}，期望 2048 at {path}")
                 return False
         else:
-            logger.warning(f"⚠️ 'spk_emb' 格式应为 list 或 Base64 字符串 at {path}")
+            logger.warning(f"⚠️ 'spk_emb' 格式应为 None/list/Base64 字符串 at {path}")
             return False
 
         return True
@@ -325,7 +327,9 @@ class TTSResult:
             data = json.load(f)
 
         spk_data = data["spk_emb"]
-        if isinstance(spk_data, str):
+        if spk_data is None:
+            spk_emb = None
+        elif isinstance(spk_data, str):
             # 新版：Base64(fp32)
             spk_emb = np.frombuffer(base64.b64decode(spk_data), dtype=np.float32)
         else:

@@ -2,11 +2,13 @@
 stream.py - TTS 语音流
 核心逻辑所在，管理单次会话的上下文，支持流式和非流式合成。
 """
+from __future__ import annotations
+
 import time
 import os
 import numpy as np
 from pathlib import Path
-from typing import Optional, List, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 from .schema.constants import PROTOCOL, map_speaker, map_language
 from .schema.result import TTSResult, Timing, LoopOutput, DecodeResult
 from .config import TTSConfig
@@ -17,11 +19,14 @@ from . import llama, logger
 from .prompt_builder import PromptBuilder, PromptData
 from .utils.audio import load_audio
 
+if TYPE_CHECKING:
+    from .engine import TTSEngine
+
 class TTSStream:
     """
     保存 Talker, Predictor, Decoder 记忆的语音流。
     """
-    def __init__(self, engine, n_ctx=2048, voice_path: Optional[str] = None):
+    def __init__(self, engine: TTSEngine, n_ctx: int = 2048, voice_path: Optional[str] = None):
         self.engine = engine
         self.assets = engine.assets
         self.tokenizer = engine.tokenizer
@@ -400,9 +405,16 @@ class TTSStream:
     def _set_voice_from_result(self, res: TTSResult) -> bool:
         if not res.is_valid_anchor:
             return False
-            
+
+        # 如果缺少音色向量但存在 codes，解码音频后提取
+        if res.spk_emb is None and len(res.codes) > 0:
+            logger.info("🎤 [Stream] 音色向量缺失，正在从 codes 解码音频并提取...")
+            if res.audio is None:
+                res.audio = self.engine.decode(res.codes)
+            self.engine.encode(res)
+
         # 如果维度不匹配，执行重编码转换
-        if res.spk_emb.shape[-1] != self.engine.talker_model.n_embd:
+        if res.spk_emb is not None and res.spk_emb.shape[-1] != self.engine.talker_model.n_embd:
             logger.info(f"🔄 [Stream] 维度不匹配 ({res.spk_emb.shape[-1]}->{self.engine.talker_model.n_embd})，正在转换...")
             if res.audio is None:
                 self.engine.decode(res)
